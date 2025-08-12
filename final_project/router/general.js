@@ -4,6 +4,7 @@ let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
 const public_users = express.Router();
 
+const axios = require('axios');
 
 public_users.post("/register", (req,res) => {
   const username = req.body.username; // Send in Body, instead of URL
@@ -22,19 +23,37 @@ public_users.post("/register", (req,res) => {
 });
 
 // Get the book list available in the shop
-public_users.get('/',function (req, res) {
-  const prettyBooks = JSON.stringify(books, null, 2); // 2 spaces indentation
-  //console.log(prettyBooks)
-  res.setHeader('Content-Type', 'application/json'); // make sure it's JSON
-  return res.status(200).send(prettyBooks);
+public_users.get('/', async (req, res) => {
+  try {
+    const data = await Promise.resolve(books);
+    res.setHeader('Content-Type', 'application/json');
+    return res.status(200).send(JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error('Error retrieving books:', err.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
 });
 
+
 // Get book details based on ISBN
-public_users.get('/isbn/:isbn',function (req, res) {
+public_users.get('/isbn/:isbn', (req, res) => {
   const { isbn } = req.params;
-  if (!books[isbn]) return res.status(404).json({ message: "Book not found" });
-  return res.status(200).json(books[isbn]);
- });
+
+  Promise
+    .resolve(books[isbn])               
+    .then((book) => {
+      if (!book) {
+        return res.status(404).json({ message: "Book not found" });
+      }
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(200).send(JSON.stringify(book, null, 2));
+    })
+    .catch((err) => {
+      console.error('Error retrieving book by ISBN:', err);
+      return res.status(500).json({ message: "Internal Server Error" });
+    });
+});
+
   
 // Get book details based on author
 public_users.get('/author/:author', function (req, res) {
